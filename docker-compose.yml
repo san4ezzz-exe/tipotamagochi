@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  neuropet:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: neuropet_app
+    ports:
+      - "8000:8000"
+    environment:
+      - BOT_TOKEN=mock_bot_token_for_dev
+      - DATABASE_URL=sqlite:///./neuropet.db
+      - CORS_ORIGINS=*
+    volumes:
+      - neuropet_data:/app
+    restart: unless-stopped
+
+volumes:
+  neuropet_data:

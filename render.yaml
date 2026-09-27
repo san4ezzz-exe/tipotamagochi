@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: neuropet-ai-lab
+    env: docker
+    plan: free
+    region: frankfurt
+    dockerfilePath: Dockerfile
+    envVars:
+      - key: BOT_TOKEN
+        value: "mock_bot_token_for_dev"
+      - key: DATABASE_URL
+        value: "sqlite:///./neuropet.db"
+      - key: CORS_ORIGINS
+        value: "*"
