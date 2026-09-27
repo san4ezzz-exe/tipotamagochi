@@ -26,6 +26,7 @@ class UserOut(BaseModel):
     streak_days: int
     compute_tokens: int
     can_claim_grant: bool
+    tutorial_completed: bool = False
     pet: Optional[PetOut]
 
     class Config:
@@ -144,6 +145,12 @@ class StudentLeaderboardItem(BaseModel):
     accuracy: float
 
 class ShareRewardResponse(BaseModel):
+    success: bool
+    reward_tokens: int
+    new_balance: int
+    message: str
+
+class TutorialCompleteResponse(BaseModel):
     success: bool
     reward_tokens: int
     new_balance: int

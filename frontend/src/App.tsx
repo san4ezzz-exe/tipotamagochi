@@ -10,6 +10,7 @@ import { TrainModal } from './screens/TrainModal';
 import { ProfileScreen } from './screens/ProfileScreen';
 import { ForgeScreen } from './screens/ForgeScreen';
 import { DungeonScreen } from './screens/DungeonScreen';
+import { TutorialModal } from './components/TutorialModal';
 
 export const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -17,6 +18,7 @@ export const App: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [currentTab, setCurrentTab] = useState<NavTab>('hub');
   const [isTrainModalOpen, setIsTrainModalOpen] = useState<boolean>(false);
+  const [isTutorialModalOpen, setIsTutorialModalOpen] = useState<boolean>(false);
 
   useEffect(() => {
     initTelegramApp();
@@ -29,11 +31,35 @@ export const App: React.FC = () => {
       setError(null);
       const data = await api.authenticate();
       setUser(data);
+
+      // Автоматический показ обучения при первом входе
+      const seenLocal = localStorage.getItem('neuropet_tutorial_seen');
+      if (!data.tutorial_completed && !seenLocal) {
+        setIsTutorialModalOpen(true);
+      }
     } catch (err: any) {
       console.error(err);
       setError(err.message || 'Не удалось подключиться к серверу');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleClaimTutorialReward = async () => {
+    if (!user) return;
+    try {
+      const res = await api.completeTutorial(user.telegram_id);
+      if (res.success) {
+        setUser({
+          ...user,
+          compute_tokens: res.new_balance,
+          tutorial_completed: true,
+        });
+      }
+      localStorage.setItem('neuropet_tutorial_seen', 'true');
+    } catch (err) {
+      console.error('Error claiming tutorial reward:', err);
+      localStorage.setItem('neuropet_tutorial_seen', 'true');
     }
   };
 
@@ -95,6 +121,7 @@ export const App: React.FC = () => {
         computeTokens={user.compute_tokens}
         streakDays={user.streak_days}
         vram={user.pet?.current_vram || 100}
+        onOpenTutorial={() => setIsTutorialModalOpen(true)}
       />
 
       {/* Основной контент экранов */}
@@ -135,12 +162,20 @@ export const App: React.FC = () => {
         )}
       </main>
 
-      {/* Модалка обучения */}
+      {/* Модалка обучения питомца (тренировка эпох) */}
       <TrainModal
         isOpen={isTrainModalOpen}
         onClose={() => setIsTrainModalOpen(false)}
         user={user}
         onTrained={setUser}
+      />
+
+      {/* Интерактивный вводный гид по игре */}
+      <TutorialModal
+        isOpen={isTutorialModalOpen}
+        onClose={() => setIsTutorialModalOpen(false)}
+        onClaimReward={handleClaimTutorialReward}
+        alreadyRewarded={user.tutorial_completed}
       />
 
       {/* Нижняя навигация */}

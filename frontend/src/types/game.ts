@@ -20,6 +20,7 @@ export interface User {
   streak_days: number;
   compute_tokens: number;
   can_claim_grant: boolean;
+  tutorial_completed?: boolean;
   pet: Pet | null;
 }
 
@@ -143,4 +144,9 @@ export interface StudentLeaderboardItem {
   accuracy: number;
 }
 
-
+export interface TutorialCompleteResponse {
+  success: boolean;
+  reward_tokens: number;
+  new_balance: number;
+  message: string;
+}

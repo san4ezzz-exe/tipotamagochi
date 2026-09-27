@@ -2,6 +2,7 @@ from datetime import date, datetime, timedelta
 import random
 from fastapi import FastAPI, Depends, HTTPException, Header
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from .config import CORS_ORIGINS
@@ -14,7 +15,8 @@ from .schemas import (
     LayerItemOut, UserInventoryItemOut, ForgeStateOut,
     BuyLayerRequest, EquipLayerRequest,
     DungeonAttackRequest, DungeonPromptRequest,
-    SetUniversityRequest, UniversityLeaderboardItem, StudentLeaderboardItem, ShareRewardResponse
+    SetUniversityRequest, UniversityLeaderboardItem, StudentLeaderboardItem, ShareRewardResponse,
+    TutorialCompleteResponse
 )
 from .auth import validate_telegram_data
 from .seed_data import seed_dataset_cards, seed_layer_items
@@ -39,6 +41,14 @@ app.add_middleware(
 def on_startup():
     db = next(get_db())
     try:
+        # Безопасное добавление колонки tutorial_completed при необходимости
+        try:
+            with engine.connect() as conn:
+                conn.execute(text("ALTER TABLE users ADD COLUMN tutorial_completed BOOLEAN DEFAULT 0"))
+                conn.commit()
+        except Exception:
+            pass
+
         seed_dataset_cards(db)
         seed_layer_items(db)
     finally:
@@ -58,6 +68,7 @@ def get_or_create_user(
             first_name=first_name,
             compute_tokens=250, # Стартовый баланс токенов
             streak_days=1,
+            tutorial_completed=False,
             last_grant_date=None
         )
         db.add(user)
@@ -124,6 +135,7 @@ def auth(payload: AuthRequest, db: Session = Depends(get_db)):
         streak_days=user.streak_days,
         compute_tokens=user.compute_tokens,
         can_claim_grant=can_claim,
+        tutorial_completed=bool(user.tutorial_completed),
         pet=PetOut.from_orm(pet) if pet else None
     )
 
@@ -626,6 +638,35 @@ def claim_share_reward(tg_id: int, db: Session = Depends(get_db)):
         reward_tokens=reward,
         new_balance=user.compute_tokens,
         message="Вычислительный бонус за приглашение одногруппников получен! +150 FLOP."
+    )
+
+@app.post("/api/tutorial/complete", response_model=TutorialCompleteResponse)
+def complete_tutorial(
+    tg_id: int,
+    db: Session = Depends(get_db)
+):
+    user = db.query(User).filter(User.telegram_id == tg_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Пользователь не найден")
+
+    if user.tutorial_completed:
+        return TutorialCompleteResponse(
+            success=False,
+            reward_tokens=0,
+            new_balance=user.compute_tokens,
+            message="Обучение уже пройдено ранее!"
+        )
+
+    reward = 150
+    user.tutorial_completed = True
+    user.compute_tokens += reward
+    db.commit()
+
+    return TutorialCompleteResponse(
+        success=True,
+        reward_tokens=reward,
+        new_balance=user.compute_tokens,
+        message="Обучение завершено! Начислен грант +150 FLOP на первую прокачку."
     )
 
 # --- SERVE FRONTEND STATIC FILES (PRODUCTION SPA) ---

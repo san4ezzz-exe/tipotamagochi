@@ -236,6 +236,17 @@ export const api = {
     }
     return response.json();
   },
+
+  async completeTutorial(tgId: number): Promise<import('../types/game').TutorialCompleteResponse> {
+    const response = await fetch(`${API_BASE_URL}/api/tutorial/complete?tg_id=${tgId}`, {
+      method: 'POST',
+    });
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(err.detail || 'Ошибка завершения обучения');
+    }
+    return response.json();
+  },
 };
 
 

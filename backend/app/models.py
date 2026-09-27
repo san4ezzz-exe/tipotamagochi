@@ -15,6 +15,7 @@ class User(Base):
     streak_days = Column(Integer, default=1)
     last_grant_date = Column(Date, nullable=True)
     compute_tokens = Column(Integer, default=300)
+    tutorial_completed = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     pets = relationship("Pet", back_populates="owner", cascade="all, delete-orphan")
